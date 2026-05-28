@@ -1,25 +1,43 @@
 """
-Deutsche Baseball Liga – EasyScore Stats Scraper
-De API geeft een directe array terug van spelersrijen (geen wrapper).
-Veldnamen: Player, PlayerID, Teamname, Team (ID), BA, OBP, SLG, OPS etc.
-Stats komen al als strings met correcte baseball-notatie (.370, .921).
+DBL EasyScore Scraper — lokaal draaien
+=======================================
+Vereisten:
+    pip install requests
+
+Gebruik:
+    python dbl-scraper-lokaal.py
+
+Het script haalt batting/pitching/fielding op en pusht JSON naar GitHub.
+Stel eenmalig GITHUB_TOKEN en GITHUB_REPO in (zie CONFIG hieronder).
+
+Automatisch draaien (Mac/Linux):
+    Voeg toe aan crontab:  0 7,13,19 * * * cd /pad/naar/script && python dbl-scraper-lokaal.py
+
+Automatisch draaien (Windows):
+    Task Scheduler → dagelijks python dbl-scraper-lokaal.py uitvoeren
 """
 
 import json
+import base64
 import os
 import time
 from datetime import datetime, timezone
 
 import requests
 
-# ── Configuratie ──────────────────────────────────────────────────────────────
+# ── CONFIG — pas dit aan ──────────────────────────────────────────────────────
+
+GITHUB_TOKEN = "ghp_JOUW_TOKEN_HIER"   # GitHub → Settings → Developer Settings → Personal access tokens
+GITHUB_REPO  = "finnkops-code/DBL-resultaten"  # gebruikersnaam/reponaam
+GITHUB_BRANCH = "main"
+
+# ── EasyScore API ─────────────────────────────────────────────────────────────
 
 API_BASE  = "https://api.easyscore.com/v2/stats"
 YEAR      = 2026
 LEAGUE_ID = 10147
-DATA_DIR  = "data"
 
-REQUEST_HEADERS = {
+API_HEADERS = {
     "Accept":          "*/*",
     "Content-Type":    "application/json",
     "Origin":          "https://www.easyscore.com",
@@ -35,75 +53,66 @@ CATEGORIES = {
     "fielding": "fld",
 }
 
-# ── Kolomdefinities per categorie ─────────────────────────────────────────────
-# Gebaseerd op de werkelijke veldnamen uit de API response.
-# format=False omdat EasyScore stats al als correcte strings levert (.370 etc.)
-
 BATTING_HEADERS = [
-    {"column": "Player",    "label": "Player",  "tooltip": "",                                              "format": False},
-    {"column": "Teamname",  "label": "Team",    "tooltip": "",                                              "format": False},
-    {"column": "G",         "label": "G",       "tooltip": "Games played",                                  "format": False},
-    {"column": "PA",        "label": "PA",      "tooltip": "Plate Appearances",                             "format": False},
-    {"column": "AB",        "label": "AB",      "tooltip": "At Bats",                                       "format": False},
-    {"column": "R",         "label": "R",       "tooltip": "Runs scored",                                   "format": False},
-    {"column": "H",         "label": "H",       "tooltip": "Hits",                                          "format": False},
-    {"column": "2B",        "label": "2B",      "tooltip": "Doubles",                                       "format": False},
-    {"column": "3B",        "label": "3B",      "tooltip": "Triples",                                       "format": False},
-    {"column": "HR",        "label": "HR",      "tooltip": "Home Runs",                                     "format": False},
-    {"column": "RBI",       "label": "RBI",     "tooltip": "Runs Batted In",                                "format": False},
-    {"column": "SB",        "label": "SB",      "tooltip": "Stolen Bases",                                  "format": False},
-    {"column": "CS",        "label": "CS",      "tooltip": "Caught Stealing",                               "format": False},
-    {"column": "BB",        "label": "BB",      "tooltip": "Base on Balls (walks)",                         "format": False},
-    {"column": "SO",        "label": "SO",      "tooltip": "Strikeouts",                                    "format": False},
-    {"column": "HBP",       "label": "HBP",     "tooltip": "Hit by Pitch",                                  "format": False},
-    {"column": "SF",        "label": "SF",      "tooltip": "Sacrifice Flies",                               "format": False},
-    {"column": "BA",        "label": "AVG",     "tooltip": "Batting Average",                               "format": False},
-    {"column": "OBP",       "label": "OBP",     "tooltip": "On Base Percentage",                            "format": False},
-    {"column": "SLG",       "label": "SLG",     "tooltip": "Slugging Percentage",                           "format": False},
-    {"column": "OPS",       "label": "OPS",     "tooltip": "On Base Plus Slugging",                         "format": False},
-    {"column": "ISO",       "label": "ISO",     "tooltip": "Isolated Power (SLG - AVG)",                    "format": False},
-    {"column": "BABIP",     "label": "BABIP",   "tooltip": "Batting Average on Balls in Play",              "format": False},
-    {"column": "wOBA",      "label": "wOBA",    "tooltip": "Weighted On Base Average",                      "format": False},
-    {"column": "TB",        "label": "TB",      "tooltip": "Total Bases",                                   "format": False},
-    {"column": "XBH",       "label": "XBH",     "tooltip": "Extra Base Hits",                               "format": False},
+    {"column":"Player","label":"Player","tooltip":"","format":False},
+    {"column":"Teamname","label":"Team","tooltip":"","format":False},
+    {"column":"G","label":"G","tooltip":"Games played","format":False},
+    {"column":"PA","label":"PA","tooltip":"Plate Appearances","format":False},
+    {"column":"AB","label":"AB","tooltip":"At Bats","format":False},
+    {"column":"R","label":"R","tooltip":"Runs","format":False},
+    {"column":"H","label":"H","tooltip":"Hits","format":False},
+    {"column":"2B","label":"2B","tooltip":"Doubles","format":False},
+    {"column":"3B","label":"3B","tooltip":"Triples","format":False},
+    {"column":"HR","label":"HR","tooltip":"Home Runs","format":False},
+    {"column":"RBI","label":"RBI","tooltip":"Runs Batted In","format":False},
+    {"column":"SB","label":"SB","tooltip":"Stolen Bases","format":False},
+    {"column":"BB","label":"BB","tooltip":"Walks","format":False},
+    {"column":"SO","label":"SO","tooltip":"Strikeouts","format":False},
+    {"column":"HBP","label":"HBP","tooltip":"Hit by Pitch","format":False},
+    {"column":"BA","label":"AVG","tooltip":"Batting Average","format":False},
+    {"column":"OBP","label":"OBP","tooltip":"On Base Percentage","format":False},
+    {"column":"SLG","label":"SLG","tooltip":"Slugging Percentage","format":False},
+    {"column":"OPS","label":"OPS","tooltip":"On Base Plus Slugging","format":False},
+    {"column":"ISO","label":"ISO","tooltip":"Isolated Power","format":False},
+    {"column":"BABIP","label":"BABIP","tooltip":"Batting Avg on Balls in Play","format":False},
+    {"column":"wOBA","label":"wOBA","tooltip":"Weighted On Base Average","format":False},
+    {"column":"TB","label":"TB","tooltip":"Total Bases","format":False},
 ]
 
 PITCHING_HEADERS = [
-    {"column": "Player",    "label": "Player",  "tooltip": "",                                              "format": False},
-    {"column": "Teamname",  "label": "Team",    "tooltip": "",                                              "format": False},
-    {"column": "G",         "label": "G",       "tooltip": "Games pitched",                                 "format": False},
-    {"column": "GS",        "label": "GS",      "tooltip": "Games Started",                                 "format": False},
-    {"column": "W",         "label": "W",       "tooltip": "Wins",                                          "format": False},
-    {"column": "L",         "label": "L",       "tooltip": "Losses",                                        "format": False},
-    {"column": "SV",        "label": "SV",      "tooltip": "Saves",                                         "format": False},
-    {"column": "IP",        "label": "IP",      "tooltip": "Innings Pitched",                               "format": False},
-    {"column": "H",         "label": "H",       "tooltip": "Hits allowed",                                  "format": False},
-    {"column": "R",         "label": "R",       "tooltip": "Runs allowed",                                  "format": False},
-    {"column": "ER",        "label": "ER",      "tooltip": "Earned Runs",                                   "format": False},
-    {"column": "BB",        "label": "BB",      "tooltip": "Walks allowed",                                 "format": False},
-    {"column": "SO",        "label": "SO",      "tooltip": "Strikeouts",                                    "format": False},
-    {"column": "HR",        "label": "HR",      "tooltip": "Home Runs allowed",                             "format": False},
-    {"column": "HBP",       "label": "HBP",     "tooltip": "Hit Batters",                                   "format": False},
-    {"column": "ERA",       "label": "ERA",     "tooltip": "Earned Run Average",                            "format": False},
-    {"column": "WHIP",      "label": "WHIP",    "tooltip": "Walks + Hits per Inning Pitched",               "format": False},
-    {"column": "BAA",       "label": "BAA",     "tooltip": "Batting Average Against",                       "format": False},
-    {"column": "SO9",       "label": "K/9",     "tooltip": "Strikeouts per 9 innings",                      "format": False},
-    {"column": "BB9",       "label": "BB/9",    "tooltip": "Walks per 9 innings",                           "format": False},
-    {"column": "HR9",       "label": "HR/9",    "tooltip": "Home Runs per 9 innings",                       "format": False},
-    {"column": "KOBB",      "label": "K/BB",    "tooltip": "Strikeout to Walk ratio",                       "format": False},
+    {"column":"Player","label":"Player","tooltip":"","format":False},
+    {"column":"Teamname","label":"Team","tooltip":"","format":False},
+    {"column":"G","label":"G","tooltip":"Games","format":False},
+    {"column":"GS","label":"GS","tooltip":"Games Started","format":False},
+    {"column":"W","label":"W","tooltip":"Wins","format":False},
+    {"column":"L","label":"L","tooltip":"Losses","format":False},
+    {"column":"SV","label":"SV","tooltip":"Saves","format":False},
+    {"column":"IP","label":"IP","tooltip":"Innings Pitched","format":False},
+    {"column":"H","label":"H","tooltip":"Hits allowed","format":False},
+    {"column":"R","label":"R","tooltip":"Runs allowed","format":False},
+    {"column":"ER","label":"ER","tooltip":"Earned Runs","format":False},
+    {"column":"BB","label":"BB","tooltip":"Walks","format":False},
+    {"column":"SO","label":"SO","tooltip":"Strikeouts","format":False},
+    {"column":"HR","label":"HR","tooltip":"HR allowed","format":False},
+    {"column":"ERA","label":"ERA","tooltip":"Earned Run Average","format":False},
+    {"column":"WHIP","label":"WHIP","tooltip":"Walks + Hits per IP","format":False},
+    {"column":"BAA","label":"BAA","tooltip":"Batting Average Against","format":False},
+    {"column":"SO9","label":"K/9","tooltip":"Strikeouts per 9 innings","format":False},
+    {"column":"BB9","label":"BB/9","tooltip":"Walks per 9 innings","format":False},
+    {"column":"KOBB","label":"K/BB","tooltip":"K/BB ratio","format":False},
 ]
 
 FIELDING_HEADERS = [
-    {"column": "Player",    "label": "Player",  "tooltip": "",                                              "format": False},
-    {"column": "Teamname",  "label": "Team",    "tooltip": "",                                              "format": False},
-    {"column": "Pos",       "label": "Pos",     "tooltip": "Position",                                      "format": False},
-    {"column": "G",         "label": "G",       "tooltip": "Games played",                                  "format": False},
-    {"column": "TC",        "label": "TC",      "tooltip": "Total Chances",                                  "format": False},
-    {"column": "PO",        "label": "PO",      "tooltip": "Putouts",                                       "format": False},
-    {"column": "A",         "label": "A",       "tooltip": "Assists",                                       "format": False},
-    {"column": "E",         "label": "E",       "tooltip": "Errors",                                        "format": False},
-    {"column": "DP",        "label": "DP",      "tooltip": "Double Plays",                                  "format": False},
-    {"column": "FPCT",      "label": "FPCT",    "tooltip": "Fielding Percentage",                           "format": False},
+    {"column":"Player","label":"Player","tooltip":"","format":False},
+    {"column":"Teamname","label":"Team","tooltip":"","format":False},
+    {"column":"Pos","label":"Pos","tooltip":"Position","format":False},
+    {"column":"G","label":"G","tooltip":"Games","format":False},
+    {"column":"TC","label":"TC","tooltip":"Total Chances","format":False},
+    {"column":"PO","label":"PO","tooltip":"Putouts","format":False},
+    {"column":"A","label":"A","tooltip":"Assists","format":False},
+    {"column":"E","label":"E","tooltip":"Errors","format":False},
+    {"column":"DP","label":"DP","tooltip":"Double Plays","format":False},
+    {"column":"FPCT","label":"FPCT","tooltip":"Fielding Percentage","format":False},
 ]
 
 HEADERS_MAP = {
@@ -112,150 +121,84 @@ HEADERS_MAP = {
     "fielding": FIELDING_HEADERS,
 }
 
-os.makedirs(DATA_DIR, exist_ok=True)
 
+# ── EasyScore ophalen ─────────────────────────────────────────────────────────
 
-# ── Hulpfuncties ──────────────────────────────────────────────────────────────
-
-def fetch(params: dict) -> list | None:
-    """Doe een GET-verzoek met retry. Geeft directe array terug."""
+def fetch_stats(cat_val: str) -> list:
+    params = {
+        "yr": YEAR, "leagueID": LEAGUE_ID, "round": 0,
+        "cat": cat_val, "split": "", "nameDisplay": 0,
+        "subCategory": "", "playerID": 0, "gameID": 0,
+        "byID": 0, "limit": 0, "affectedTable": "",
+        "numOfLeaders": 0, "selectedGameStats": 0,
+        "hitChart": 0, "gameLeaders": 0, "parkFactors": 0,
+    }
     for attempt in range(3):
         try:
-            r = requests.get(API_BASE, params=params, headers=REQUEST_HEADERS, timeout=20)
-            print(f"     HTTP {r.status_code} | {len(r.content)} bytes")
+            r = requests.get(API_BASE, params=params, headers=API_HEADERS, timeout=20)
+            print(f"    HTTP {r.status_code} | {len(r.content)} bytes")
             if r.status_code == 200:
                 data = r.json()
-                print(f"     Response type: {type(data).__name__}")
-                if isinstance(data, list):
-                    print(f"     Array length: {len(data)}")
-                    if len(data) > 0:
-                        print(f"     Eerste item keys: {list(data[0].keys())[:8]}")
-                    return data
-                if isinstance(data, dict):
-                    print(f"     Dict keys: {list(data.keys())}")
-                    return data.get("data") or data.get("players") or data.get("rows") or []
-            else:
-                print(f"     Response body: {r.text[:300]}")
+                rows = data if isinstance(data, list) else (data.get("data") or data.get("players") or [])
+                # Spelerlink toevoegen
+                for row in rows:
+                    pid = row.get("PlayerID") or row.get("playerID")
+                    row["link"] = f"https://www.easyscore.com/players/{pid}" if pid else ""
+                return rows
+            print(f"    Fout: {r.text[:200]}")
         except Exception as e:
-            print(f"  ⚠ Poging {attempt + 1} mislukt: {e}")
+            print(f"    Poging {attempt+1} mislukt: {e}")
         time.sleep(2 ** attempt)
-    return None
-
-
-def base_params(cat: str, round_: int = 0) -> dict:
-    return {
-        "yr":                YEAR,
-        "leagueID":          LEAGUE_ID,
-        "round":             round_,
-        "cat":               cat,
-        "split":             "",
-        "nameDisplay":       0,
-        "subCategory":       "",
-        "playerID":          0,
-        "gameID":            0,
-        "byID":              0,
-        "limit":             0,
-        "affectedTable":     "",
-        "numOfLeaders":      0,
-        "selectedGameStats": 0,
-        "hitChart":          0,
-        "gameLeaders":       0,
-        "parkFactors":       0,
-    }
-
-
-def normalise(rows: list, cat_key: str) -> dict:
-    """
-    Verwerk de ruwe API-array naar ons standaardformaat.
-
-    Wat we weten uit de API:
-    - Directe array van dicts
-    - Naam: Player (bijv. "Goebel, Ch. COC")
-    - Team: Teamname (bijv. "Cologne Cardinals"), Team = team ID (integer)
-    - PlayerID: integer
-    - Stats: al als strings met correcte baseball-notatie (".370", ".921")
-      → GEEN /1000 nodig, format=False voor alle kolommen
-    - Spelerlink: https://www.easyscore.com/players/{PlayerID}
-    """
-    if not rows:
-        return {"headers": HEADERS_MAP[cat_key], "data": []}
-
-    data = []
-    for row in rows:
-        if not isinstance(row, dict):
-            continue
-        r = dict(row)
-
-        # Spelerlink
-        pid = r.get("PlayerID") or r.get("playerID")
-        r["link"] = f"https://www.easyscore.com/players/{pid}" if pid else ""
-
-        # Zorg dat Player en Teamname altijd aanwezig zijn
-        r.setdefault("Player",   "")
-        r.setdefault("Teamname", "")
-
-        data.append(r)
-
-    print(f"     → {len(data)} spelers verwerkt")
-    return {"headers": HEADERS_MAP[cat_key], "data": data}
-
-
-# ── Scrape functies ───────────────────────────────────────────────────────────
-
-def scrape_section(cat_key: str, round_: int = 0) -> dict:
-    cat_val = CATEGORIES[cat_key]
-    print(f"  ↳ {cat_key} (cat={cat_val}, round={round_})…")
-    rows = fetch(base_params(cat_val, round_))
-    if rows is None:
-        print(f"  ⚠ Geen data ontvangen voor {cat_key}")
-        return {"headers": HEADERS_MAP[cat_key], "data": []}
-    return normalise(rows, cat_key)
-
-
-def scrape_rounds() -> list:
-    """Haal beschikbare rondes op."""
-    try:
-        r = requests.get(
-            "https://api.easyscore.com/v2/rounds",
-            params={
-                "uid": "", "isAdmin": 0, "hasAccessToLeagues": "",
-                "id": 0, "lg": LEAGUE_ID, "yr": YEAR, "byLeague": 1,
-            },
-            headers=REQUEST_HEADERS,
-            timeout=15,
-        )
-        if r.status_code == 200:
-            data = r.json()
-            rounds = data if isinstance(data, list) else data.get("rounds", [])
-            print(f"  ✅ {len(rounds)} rondes gevonden")
-            return rounds
-        print(f"  ⚠ Rondes HTTP {r.status_code}")
-    except Exception as e:
-        print(f"  ⚠ Rondes ophalen mislukt: {e}")
     return []
 
 
-def main():
-    print(f"\nDBL EasyScore Scraper — {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}\n")
+# ── GitHub upload ─────────────────────────────────────────────────────────────
 
-    # ── Alle stats (gehele seizoen, round=0) ──────────────────────────────────
-    print("Scraping stats (alle rondes)…")
+def github_upload(path: str, content: str, message: str):
+    """Maak of update een bestand in GitHub via de API."""
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{path}"
+    headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github.v3+json",
+    }
+
+    # Huidige SHA ophalen (nodig voor update)
+    sha = None
+    r = requests.get(url, headers=headers)
+    if r.status_code == 200:
+        sha = r.json().get("sha")
+
+    payload = {
+        "message": message,
+        "content": base64.b64encode(content.encode()).decode(),
+        "branch":  GITHUB_BRANCH,
+    }
+    if sha:
+        payload["sha"] = sha
+
+    r = requests.put(url, headers=headers, json=payload)
+    if r.status_code in (200, 201):
+        print(f"    ✅ GitHub: {path}")
+    else:
+        print(f"    ⚠ GitHub fout {r.status_code}: {r.text[:200]}")
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+def main():
+    print(f"\nDBL Scraper — {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}\n")
+
     all_stats = {}
-    for cat_key in CATEGORIES:
-        all_stats[cat_key] = scrape_section(cat_key, round_=0)
+    for cat_key, cat_val in CATEGORIES.items():
+        print(f"  {cat_key} ({cat_val})…")
+        rows = fetch_stats(cat_val)
+        all_stats[cat_key] = {
+            "headers": HEADERS_MAP[cat_key],
+            "data":    rows,
+        }
+        print(f"    {len(rows)} spelers")
         time.sleep(0.5)
 
-    with open(f"{DATA_DIR}/stats.json", "w", encoding="utf-8") as f:
-        json.dump(all_stats, f, ensure_ascii=False, indent=2)
-    print(f"  ✅ stats.json ({sum(len(v['data']) for v in all_stats.values())} rijen totaal)")
-
-    # ── Rondes ophalen ────────────────────────────────────────────────────────
-    print("\nRondes ophalen…")
-    rounds = scrape_rounds()
-    with open(f"{DATA_DIR}/rounds.json", "w", encoding="utf-8") as f:
-        json.dump(rounds, f, ensure_ascii=False, indent=2)
-
-    # ── Meta ──────────────────────────────────────────────────────────────────
     meta = {
         "last_updated":  datetime.now(timezone.utc).isoformat(),
         "source":        "https://api.easyscore.com/v2/stats",
@@ -264,10 +207,22 @@ def main():
         "year":          YEAR,
         "player_counts": {s: len(v["data"]) for s, v in all_stats.items()},
     }
-    with open(f"{DATA_DIR}/meta.json", "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
 
-    print(f"\nKlaar! Data opgeslagen in /{DATA_DIR}/\n")
+    ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+    print("\nUploaden naar GitHub…")
+    github_upload(
+        "data/stats.json",
+        json.dumps(all_stats, ensure_ascii=False, indent=2),
+        f"📊 DBL stats update {ts}",
+    )
+    github_upload(
+        "data/meta.json",
+        json.dumps(meta, ensure_ascii=False, indent=2),
+        f"📊 DBL meta update {ts}",
+    )
+
+    print(f"\nKlaar! {sum(len(v['data']) for v in all_stats.values())} spelers opgeslagen.\n")
 
 
 if __name__ == "__main__":
