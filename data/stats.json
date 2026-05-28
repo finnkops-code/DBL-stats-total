@@ -1,14 +1,365 @@
 {
   "batting": {
-    "headers": [],
+    "headers": [
+      {
+        "column": "Player",
+        "label": "Player",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "Teamname",
+        "label": "Team",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "G",
+        "label": "G",
+        "tooltip": "Games played",
+        "format": false
+      },
+      {
+        "column": "PA",
+        "label": "PA",
+        "tooltip": "Plate Appearances",
+        "format": false
+      },
+      {
+        "column": "AB",
+        "label": "AB",
+        "tooltip": "At Bats",
+        "format": false
+      },
+      {
+        "column": "R",
+        "label": "R",
+        "tooltip": "Runs scored",
+        "format": false
+      },
+      {
+        "column": "H",
+        "label": "H",
+        "tooltip": "Hits",
+        "format": false
+      },
+      {
+        "column": "2B",
+        "label": "2B",
+        "tooltip": "Doubles",
+        "format": false
+      },
+      {
+        "column": "3B",
+        "label": "3B",
+        "tooltip": "Triples",
+        "format": false
+      },
+      {
+        "column": "HR",
+        "label": "HR",
+        "tooltip": "Home Runs",
+        "format": false
+      },
+      {
+        "column": "RBI",
+        "label": "RBI",
+        "tooltip": "Runs Batted In",
+        "format": false
+      },
+      {
+        "column": "SB",
+        "label": "SB",
+        "tooltip": "Stolen Bases",
+        "format": false
+      },
+      {
+        "column": "CS",
+        "label": "CS",
+        "tooltip": "Caught Stealing",
+        "format": false
+      },
+      {
+        "column": "BB",
+        "label": "BB",
+        "tooltip": "Base on Balls (walks)",
+        "format": false
+      },
+      {
+        "column": "SO",
+        "label": "SO",
+        "tooltip": "Strikeouts",
+        "format": false
+      },
+      {
+        "column": "HBP",
+        "label": "HBP",
+        "tooltip": "Hit by Pitch",
+        "format": false
+      },
+      {
+        "column": "SF",
+        "label": "SF",
+        "tooltip": "Sacrifice Flies",
+        "format": false
+      },
+      {
+        "column": "BA",
+        "label": "AVG",
+        "tooltip": "Batting Average",
+        "format": false
+      },
+      {
+        "column": "OBP",
+        "label": "OBP",
+        "tooltip": "On Base Percentage",
+        "format": false
+      },
+      {
+        "column": "SLG",
+        "label": "SLG",
+        "tooltip": "Slugging Percentage",
+        "format": false
+      },
+      {
+        "column": "OPS",
+        "label": "OPS",
+        "tooltip": "On Base Plus Slugging",
+        "format": false
+      },
+      {
+        "column": "ISO",
+        "label": "ISO",
+        "tooltip": "Isolated Power (SLG - AVG)",
+        "format": false
+      },
+      {
+        "column": "BABIP",
+        "label": "BABIP",
+        "tooltip": "Batting Average on Balls in Play",
+        "format": false
+      },
+      {
+        "column": "wOBA",
+        "label": "wOBA",
+        "tooltip": "Weighted On Base Average",
+        "format": false
+      },
+      {
+        "column": "TB",
+        "label": "TB",
+        "tooltip": "Total Bases",
+        "format": false
+      },
+      {
+        "column": "XBH",
+        "label": "XBH",
+        "tooltip": "Extra Base Hits",
+        "format": false
+      }
+    ],
     "data": []
   },
   "pitching": {
-    "headers": [],
+    "headers": [
+      {
+        "column": "Player",
+        "label": "Player",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "Teamname",
+        "label": "Team",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "G",
+        "label": "G",
+        "tooltip": "Games pitched",
+        "format": false
+      },
+      {
+        "column": "GS",
+        "label": "GS",
+        "tooltip": "Games Started",
+        "format": false
+      },
+      {
+        "column": "W",
+        "label": "W",
+        "tooltip": "Wins",
+        "format": false
+      },
+      {
+        "column": "L",
+        "label": "L",
+        "tooltip": "Losses",
+        "format": false
+      },
+      {
+        "column": "SV",
+        "label": "SV",
+        "tooltip": "Saves",
+        "format": false
+      },
+      {
+        "column": "IP",
+        "label": "IP",
+        "tooltip": "Innings Pitched",
+        "format": false
+      },
+      {
+        "column": "H",
+        "label": "H",
+        "tooltip": "Hits allowed",
+        "format": false
+      },
+      {
+        "column": "R",
+        "label": "R",
+        "tooltip": "Runs allowed",
+        "format": false
+      },
+      {
+        "column": "ER",
+        "label": "ER",
+        "tooltip": "Earned Runs",
+        "format": false
+      },
+      {
+        "column": "BB",
+        "label": "BB",
+        "tooltip": "Walks allowed",
+        "format": false
+      },
+      {
+        "column": "SO",
+        "label": "SO",
+        "tooltip": "Strikeouts",
+        "format": false
+      },
+      {
+        "column": "HR",
+        "label": "HR",
+        "tooltip": "Home Runs allowed",
+        "format": false
+      },
+      {
+        "column": "HBP",
+        "label": "HBP",
+        "tooltip": "Hit Batters",
+        "format": false
+      },
+      {
+        "column": "ERA",
+        "label": "ERA",
+        "tooltip": "Earned Run Average",
+        "format": false
+      },
+      {
+        "column": "WHIP",
+        "label": "WHIP",
+        "tooltip": "Walks + Hits per Inning Pitched",
+        "format": false
+      },
+      {
+        "column": "BAA",
+        "label": "BAA",
+        "tooltip": "Batting Average Against",
+        "format": false
+      },
+      {
+        "column": "SO9",
+        "label": "K/9",
+        "tooltip": "Strikeouts per 9 innings",
+        "format": false
+      },
+      {
+        "column": "BB9",
+        "label": "BB/9",
+        "tooltip": "Walks per 9 innings",
+        "format": false
+      },
+      {
+        "column": "HR9",
+        "label": "HR/9",
+        "tooltip": "Home Runs per 9 innings",
+        "format": false
+      },
+      {
+        "column": "KOBB",
+        "label": "K/BB",
+        "tooltip": "Strikeout to Walk ratio",
+        "format": false
+      }
+    ],
     "data": []
   },
   "fielding": {
-    "headers": [],
+    "headers": [
+      {
+        "column": "Player",
+        "label": "Player",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "Teamname",
+        "label": "Team",
+        "tooltip": "",
+        "format": false
+      },
+      {
+        "column": "Pos",
+        "label": "Pos",
+        "tooltip": "Position",
+        "format": false
+      },
+      {
+        "column": "G",
+        "label": "G",
+        "tooltip": "Games played",
+        "format": false
+      },
+      {
+        "column": "TC",
+        "label": "TC",
+        "tooltip": "Total Chances",
+        "format": false
+      },
+      {
+        "column": "PO",
+        "label": "PO",
+        "tooltip": "Putouts",
+        "format": false
+      },
+      {
+        "column": "A",
+        "label": "A",
+        "tooltip": "Assists",
+        "format": false
+      },
+      {
+        "column": "E",
+        "label": "E",
+        "tooltip": "Errors",
+        "format": false
+      },
+      {
+        "column": "DP",
+        "label": "DP",
+        "tooltip": "Double Plays",
+        "format": false
+      },
+      {
+        "column": "FPCT",
+        "label": "FPCT",
+        "tooltip": "Fielding Percentage",
+        "format": false
+      }
+    ],
     "data": []
   }
 }
