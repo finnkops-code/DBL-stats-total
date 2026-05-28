@@ -122,15 +122,20 @@ def fetch(params: dict) -> list | None:
     for attempt in range(3):
         try:
             r = requests.get(API_BASE, params=params, headers=REQUEST_HEADERS, timeout=20)
+            print(f"     HTTP {r.status_code} | {len(r.content)} bytes")
             if r.status_code == 200:
                 data = r.json()
-                # API geeft directe array terug
+                print(f"     Response type: {type(data).__name__}")
                 if isinstance(data, list):
+                    print(f"     Array length: {len(data)}")
+                    if len(data) > 0:
+                        print(f"     Eerste item keys: {list(data[0].keys())[:8]}")
                     return data
-                # Of soms toch gewrapped
                 if isinstance(data, dict):
+                    print(f"     Dict keys: {list(data.keys())}")
                     return data.get("data") or data.get("players") or data.get("rows") or []
-            print(f"  ⚠ HTTP {r.status_code}: {r.text[:200]}")
+            else:
+                print(f"     Response body: {r.text[:300]}")
         except Exception as e:
             print(f"  ⚠ Poging {attempt + 1} mislukt: {e}")
         time.sleep(2 ** attempt)
