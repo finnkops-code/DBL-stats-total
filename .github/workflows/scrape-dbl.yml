@@ -10,7 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
       - uses: actions/checkout@v4
 
@@ -22,7 +21,9 @@ jobs:
         run: pip install requests
 
       - name: Run scraper
-        run: python scraper.py
+        env:
+          EASYSCORE_API_KEY: ${{ secrets.EASYSCORE_API_KEY }}
+        run: python dbl-scraper.py
 
       - name: Commit & push
         run: |
