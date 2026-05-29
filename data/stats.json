@@ -44,6 +44,18 @@
         "format": false
       },
       {
+        "column": "RBI",
+        "label": "RBI",
+        "tooltip": "Runs Batted In",
+        "format": false
+      },
+      {
+        "column": "HR",
+        "label": "HR",
+        "tooltip": "Home Runs",
+        "format": false
+      },
+      {
         "column": "2B",
         "label": "2B",
         "tooltip": "Doubles",
@@ -56,15 +68,9 @@
         "format": false
       },
       {
-        "column": "HR",
-        "label": "HR",
-        "tooltip": "Home Runs",
-        "format": false
-      },
-      {
-        "column": "RBI",
-        "label": "RBI",
-        "tooltip": "Runs Batted In",
+        "column": "TB",
+        "label": "TB",
+        "tooltip": "Total Bases",
         "format": false
       },
       {
@@ -74,15 +80,9 @@
         "format": false
       },
       {
-        "column": "CS",
-        "label": "CS",
-        "tooltip": "Caught Stealing",
-        "format": false
-      },
-      {
         "column": "BB",
         "label": "BB",
-        "tooltip": "Base on Balls (walks)",
+        "tooltip": "Walks",
         "format": false
       },
       {
@@ -98,14 +98,8 @@
         "format": false
       },
       {
-        "column": "SF",
-        "label": "SF",
-        "tooltip": "Sacrifice Flies",
-        "format": false
-      },
-      {
         "column": "BA",
-        "label": "AVG",
+        "label": "BA",
         "tooltip": "Batting Average",
         "format": false
       },
@@ -124,19 +118,7 @@
       {
         "column": "OPS",
         "label": "OPS",
-        "tooltip": "On Base Plus Slugging",
-        "format": false
-      },
-      {
-        "column": "ISO",
-        "label": "ISO",
-        "tooltip": "Isolated Power (SLG - AVG)",
-        "format": false
-      },
-      {
-        "column": "BABIP",
-        "label": "BABIP",
-        "tooltip": "Batting Average on Balls in Play",
+        "tooltip": "On Base + Slugging",
         "format": false
       },
       {
@@ -146,15 +128,45 @@
         "format": false
       },
       {
-        "column": "TB",
-        "label": "TB",
-        "tooltip": "Total Bases",
+        "column": "BABIP",
+        "label": "BABIP",
+        "tooltip": "Batting Avg on Balls in Play",
         "format": false
       },
       {
-        "column": "XBH",
-        "label": "XBH",
-        "tooltip": "Extra Base Hits",
+        "column": "ISO",
+        "label": "ISO",
+        "tooltip": "Isolated Power",
+        "format": false
+      },
+      {
+        "column": "BBPct",
+        "label": "BB%",
+        "tooltip": "Walk Percentage",
+        "format": false
+      },
+      {
+        "column": "SOPct",
+        "label": "SO%",
+        "tooltip": "Strikeout Percentage",
+        "format": false
+      },
+      {
+        "column": "RC",
+        "label": "RC",
+        "tooltip": "Runs Created",
+        "format": false
+      },
+      {
+        "column": "RISP",
+        "label": "RISP",
+        "tooltip": "Runners in Scoring Position",
+        "format": false
+      },
+      {
+        "column": "SBPct",
+        "label": "SB%",
+        "tooltip": "Stolen Base Percentage",
         "format": false
       }
     ],
@@ -183,7 +195,7 @@
       {
         "column": "GS",
         "label": "GS",
-        "tooltip": "Games Started",
+        "tooltip": "Games started",
         "format": false
       },
       {
@@ -211,15 +223,15 @@
         "format": false
       },
       {
-        "column": "H",
-        "label": "H",
-        "tooltip": "Hits allowed",
+        "column": "BF",
+        "label": "BF",
+        "tooltip": "Batters Faced",
         "format": false
       },
       {
-        "column": "R",
-        "label": "R",
-        "tooltip": "Runs allowed",
+        "column": "HA",
+        "label": "H",
+        "tooltip": "Hits Allowed",
         "format": false
       },
       {
@@ -229,25 +241,25 @@
         "format": false
       },
       {
-        "column": "BB",
+        "column": "BBA",
         "label": "BB",
-        "tooltip": "Walks allowed",
+        "tooltip": "Walks Allowed",
         "format": false
       },
       {
-        "column": "SO",
-        "label": "SO",
+        "column": "K",
+        "label": "K",
         "tooltip": "Strikeouts",
         "format": false
       },
       {
-        "column": "HR",
+        "column": "HRA",
         "label": "HR",
-        "tooltip": "Home Runs allowed",
+        "tooltip": "Home Runs Allowed",
         "format": false
       },
       {
-        "column": "HBP",
+        "column": "HBPA",
         "label": "HBP",
         "tooltip": "Hit Batters",
         "format": false
@@ -261,37 +273,79 @@
       {
         "column": "WHIP",
         "label": "WHIP",
-        "tooltip": "Walks + Hits per Inning Pitched",
+        "tooltip": "Walks + Hits per Inning",
         "format": false
       },
       {
-        "column": "BAA",
-        "label": "BAA",
-        "tooltip": "Batting Average Against",
+        "column": "FIP",
+        "label": "FIP",
+        "tooltip": "Fielding Independent Pitching",
         "format": false
       },
       {
-        "column": "SO9",
+        "column": "K9",
         "label": "K/9",
         "tooltip": "Strikeouts per 9 innings",
         "format": false
       },
       {
-        "column": "BB9",
+        "column": "BBA9",
         "label": "BB/9",
         "tooltip": "Walks per 9 innings",
         "format": false
       },
       {
-        "column": "HR9",
-        "label": "HR/9",
-        "tooltip": "Home Runs per 9 innings",
+        "column": "HA9",
+        "label": "H/9",
+        "tooltip": "Hits per 9 innings",
         "format": false
       },
       {
-        "column": "KOBB",
+        "column": "KPct",
+        "label": "K%",
+        "tooltip": "Strikeout Percentage",
+        "format": false
+      },
+      {
+        "column": "BBAPct",
+        "label": "BB%",
+        "tooltip": "Walk Percentage",
+        "format": false
+      },
+      {
+        "column": "KBB",
         "label": "K/BB",
-        "tooltip": "Strikeout to Walk ratio",
+        "tooltip": "Strikeout to Walk Ratio",
+        "format": false
+      },
+      {
+        "column": "OppAVG",
+        "label": "OppAVG",
+        "tooltip": "Opponent Batting Average",
+        "format": false
+      },
+      {
+        "column": "OppOPS",
+        "label": "OppOPS",
+        "tooltip": "Opponent OPS",
+        "format": false
+      },
+      {
+        "column": "OppBABIP",
+        "label": "OppBABIP",
+        "tooltip": "Opponent BABIP",
+        "format": false
+      },
+      {
+        "column": "QS",
+        "label": "QS",
+        "tooltip": "Quality Starts",
+        "format": false
+      },
+      {
+        "column": "WPct",
+        "label": "W%",
+        "tooltip": "Win Percentage",
         "format": false
       }
     ],
@@ -312,37 +366,31 @@
         "format": false
       },
       {
-        "column": "Pos",
-        "label": "Pos",
-        "tooltip": "Position",
-        "format": false
-      },
-      {
         "column": "G",
         "label": "G",
         "tooltip": "Games played",
         "format": false
       },
       {
-        "column": "TC",
+        "column": "Chances",
         "label": "TC",
         "tooltip": "Total Chances",
         "format": false
       },
       {
-        "column": "PO",
+        "column": "Putout",
         "label": "PO",
         "tooltip": "Putouts",
         "format": false
       },
       {
-        "column": "A",
+        "column": "Assist",
         "label": "A",
         "tooltip": "Assists",
         "format": false
       },
       {
-        "column": "E",
+        "column": "Error",
         "label": "E",
         "tooltip": "Errors",
         "format": false
@@ -354,9 +402,87 @@
         "format": false
       },
       {
-        "column": "FPCT",
+        "column": "FPct",
         "label": "FPCT",
         "tooltip": "Fielding Percentage",
+        "format": false
+      },
+      {
+        "column": "RangeFactor",
+        "label": "RF",
+        "tooltip": "Range Factor",
+        "format": false
+      },
+      {
+        "column": "InningsPlayed",
+        "label": "IP",
+        "tooltip": "Innings Played in Field",
+        "format": false
+      },
+      {
+        "column": "GamesatC",
+        "label": "C",
+        "tooltip": "Games at Catcher",
+        "format": false
+      },
+      {
+        "column": "Gamesat1B",
+        "label": "1B",
+        "tooltip": "Games at First Base",
+        "format": false
+      },
+      {
+        "column": "Gamesat2B",
+        "label": "2B",
+        "tooltip": "Games at Second Base",
+        "format": false
+      },
+      {
+        "column": "Gamesat3B",
+        "label": "3B",
+        "tooltip": "Games at Third Base",
+        "format": false
+      },
+      {
+        "column": "GamesatSS",
+        "label": "SS",
+        "tooltip": "Games at Shortstop",
+        "format": false
+      },
+      {
+        "column": "GamesatOF",
+        "label": "OF",
+        "tooltip": "Games in Outfield",
+        "format": false
+      },
+      {
+        "column": "GamesatP",
+        "label": "P",
+        "tooltip": "Games at Pitcher",
+        "format": false
+      },
+      {
+        "column": "PB",
+        "label": "PB",
+        "tooltip": "Passed Balls",
+        "format": false
+      },
+      {
+        "column": "SBAtt",
+        "label": "SBA",
+        "tooltip": "Stolen Base Attempts against",
+        "format": false
+      },
+      {
+        "column": "CSMade",
+        "label": "CS",
+        "tooltip": "Caught Stealing",
+        "format": false
+      },
+      {
+        "column": "CSPct",
+        "label": "CS%",
+        "tooltip": "Caught Stealing Percentage",
         "format": false
       }
     ],
