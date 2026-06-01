@@ -46,8 +46,8 @@ CATEGORIES = [
 # format=True means the value is stored as integer * 1000 (e.g. AVG 312 = .312)
 
 BATTING_HEADERS = [
-    {"column": "name",     "label": "Speler",  "tooltip": "Spelernaam"},
-    {"column": "teamcode", "label": "Team",    "tooltip": "Teamafkorting"},
+    {"column": "Player",   "label": "Speler",  "tooltip": "Spelernaam"},
+    {"column": "Teamname", "label": "Team",    "tooltip": "Teamnaam"},
     {"column": "G",        "label": "G",       "tooltip": "Gespeelde wedstrijden"},
     {"column": "PA",       "label": "PA",      "tooltip": "Plate appearances"},
     {"column": "AB",       "label": "AB",      "tooltip": "At bats"},
@@ -67,8 +67,8 @@ BATTING_HEADERS = [
 ]
 
 PITCHING_HEADERS = [
-    {"column": "name",     "label": "Speler",  "tooltip": "Spelernaam"},
-    {"column": "teamcode", "label": "Team",    "tooltip": "Teamafkorting"},
+    {"column": "Player",   "label": "Speler",  "tooltip": "Spelernaam"},
+    {"column": "Teamname", "label": "Team",    "tooltip": "Teamnaam"},
     {"column": "G",        "label": "G",       "tooltip": "Wedstrijden"},
     {"column": "GS",       "label": "GS",      "tooltip": "Starts"},
     {"column": "W",        "label": "W",       "tooltip": "Wins"},
@@ -85,8 +85,8 @@ PITCHING_HEADERS = [
 ]
 
 FIELDING_HEADERS = [
-    {"column": "name",     "label": "Speler",  "tooltip": "Spelernaam"},
-    {"column": "teamcode", "label": "Team",    "tooltip": "Teamafkorting"},
+    {"column": "Player",   "label": "Speler",  "tooltip": "Spelernaam"},
+    {"column": "Teamname", "label": "Team",    "tooltip": "Teamnaam"},
     {"column": "POS",      "label": "Pos",     "tooltip": "Positie"},
     {"column": "G",        "label": "G",       "tooltip": "Wedstrijden"},
     {"column": "INN",      "label": "INN",     "tooltip": "Innings gespeeld"},
@@ -220,50 +220,23 @@ async def extract_from_table(page) -> list:
 
 def normalize_rows(raw_rows: list, cat_name: str) -> list:
     """
-    Normalize raw API/DOM rows to the flat dict structure the WordPress
-    shortcode expects: {name, teamcode, link, ...stat columns}
+    Pass rows through as-is — the EasyScore API already provides
+    Player, Teamname and all stat columns in the correct format.
+    Only filter out non-player rows and strip internal fields.
     """
     normalized = []
+    # Fields we don't need in the output
+    strip_keys = {"name", "IO", "dtCreated", "Lic", "TopOrBot",
+                  "LeagueID", "League", "SubCategory", "Round", "RoundName",
+                  "Year", "TeamsGames", "MinPA", "MinIP", "MinINN"}
+
     for r in raw_rows:
         if not isinstance(r, dict):
             continue
-
-        row = {}
-
-        # Spelernaam — API kan "firstName"/"lastName", "name", "player" etc. gebruiken
-        if "firstName" in r or "lastName" in r:
-            row["name"] = f"{r.get('firstName', '')} {r.get('lastName', '')}".strip()
-        elif "playerName" in r:
-            row["name"] = r["playerName"]
-        elif "name" in r:
-            row["name"] = r["name"]
-        elif "player" in r and isinstance(r["player"], str):
-            row["name"] = r["player"]
-        else:
-            row["name"] = "–"
-
-        # Team
-        for tk in ("teamCode", "teamcode", "team", "club", "Team"):
-            if tk in r and r[tk]:
-                row["teamcode"] = str(r[tk])
-                break
-        if "teamcode" not in row:
-            row["teamcode"] = "–"
-
-        # Spelerpagina link
-        for lk in ("link", "url", "playerLink", "playerUrl", "profileUrl"):
-            if lk in r and r[lk]:
-                row["link"] = r[lk]
-                break
-
-        # Kopieer alle overige velden direct
-        skip = {"firstName", "lastName", "playerName", "name", "player",
-                "teamCode", "teamcode", "team", "club", "Team",
-                "link", "url", "playerLink", "playerUrl", "profileUrl"}
-        for k, v in r.items():
-            if k not in skip:
-                row[k] = v
-
+        # Must have a player name
+        if not r.get("Player"):
+            continue
+        row = {k: v for k, v in r.items() if k not in strip_keys}
         normalized.append(row)
 
     return normalized
