@@ -1,0 +1,30 @@
+name: Scrape DBL Stats
+
+on:
+  workflow_dispatch:       # handmatig starten via de knop
+  schedule:
+    - cron: '0 8 * * 1'   # elke maandag om 08:00 UTC
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium
+
+      - name: Run scraper
+        run: python scraper.py
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbl-stats
+          path: dbl_stats.json
