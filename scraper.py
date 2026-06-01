@@ -110,21 +110,38 @@ def log(msg):
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
 
 
+def is_stats_row(row: dict) -> bool:
+    """Geeft True als dit een echte spelerrij is (geen landen/lookup data)."""
+    # Landentabel heeft 'Country' en 'Code' sleutels
+    if "Country" in row or "Code" in row:
+        return False
+    # Echte stats rijen hebben baseball-gerelateerde velden
+    baseball_fields = {"G", "AB", "PA", "H", "R", "HR", "RBI", "BB", "SO",
+                       "ERA", "IP", "W", "L", "SV", "PO", "A", "E",
+                       "Player", "Teamname", "name", "teamcode"}
+    return bool(baseball_fields & set(row.keys()))
+
+
 async def scrape_category(page, year: int, cat_code: str, cat_name: str) -> list:
     url = f"https://www.easyscore.com/stats/?y={year}&l={LEAGUE_ID}&r=0&cat={cat_code}"
     captured = []
 
     async def on_response(response):
+        rurl = response.url
+        # Sla lookup/config endpoints over
+        skip_patterns = ["countries", "country", "lookup", "config", "i18n", "locale"]
+        if any(p in rurl.lower() for p in skip_patterns):
+            return
         if (
-            "easyscore.com" in response.url
+            "easyscore.com" in rurl
             and response.status == 200
             and "json" in response.headers.get("content-type", "")
         ):
             try:
                 data = await response.json()
                 if isinstance(data, (list, dict)):
-                    captured.append(data)
-                    log(f"    📡 JSON gevangen: {response.url}")
+                    captured.append({"url": rurl, "data": data})
+                    log(f"    📡 JSON gevangen: {rurl}")
             except Exception:
                 pass
 
@@ -148,20 +165,30 @@ async def scrape_category(page, year: int, cat_code: str, cat_name: str) -> list
 
     if captured:
         rows = []
-        for d in captured:
+        for item in captured:
+            d = item["data"]
+            candidates = []
             if isinstance(d, list):
-                rows.extend(d)
+                candidates = d
             elif isinstance(d, dict):
                 for key in ("players", "data", "stats", "rows", "results", "items"):
                     if key in d and isinstance(d[key], list):
-                        rows.extend(d[key])
+                        candidates = d[key]
                         break
                 else:
-                    rows.append(d)
-        return rows
+                    candidates = [d]
+            # Filter: alleen echte stats rijen
+            valid = [r for r in candidates if isinstance(r, dict) and is_stats_row(r)]
+            if valid:
+                log(f"    ✅ {len(valid)} stats-rijen gevonden in {item['url']}")
+                rows.extend(valid)
+            elif candidates:
+                log(f"    ⏭️  {len(candidates)} rijen geskipped (geen baseball data) in {item['url']}")
+        if rows:
+            return rows
 
     # Fallback: HTML tabel
-    log(f"  ⚠️  Geen JSON — HTML tabel proberen")
+    log(f"  ⚠️  Geen JSON stats — HTML tabel proberen")
     return await extract_from_table(page)
 
 
