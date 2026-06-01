@@ -1,173 +1,246 @@
 """
-DBL EasyScore Stats Scraper
-Draait via GitHub Actions, slaat resultaten op in data/stats.json
+DBL 2026 Baseball Statistics Scraper
+======================================
+Scrapes player statistics from baseball.de / easyscore.com using Playwright.
+The stats page is a Next.js SPA that loads data dynamically — this scraper
+intercepts the actual API calls made by EasyScore's frontend.
+
+Install requirements:
+    pip install playwright pandas
+    playwright install chromium
+
+Run:
+    python scraper.py
+    python scraper.py --year 2025   # previous season
+    python scraper.py --output stats.json
 """
 
+import asyncio
 import json
-import os
-import time
-from datetime import datetime, timezone
+import argparse
+import sys
+from pathlib import Path
+from datetime import datetime
 
-import requests
-
-API_BASE  = "https://api.easyscore.com/v2/stats"
-YEAR      = 2026
-LEAGUE_ID = 10147
-DATA      = "data"
-os.makedirs(DATA, exist_ok=True)
-
-API_HEADERS = {
-    "Accept":          "*/*",
-    "Content-Type":    "application/json",
-    "Origin":          "https://www.easyscore.com",
-    "Referer":         "https://www.easyscore.com/",
-    "X-Api-Key":       os.environ.get("EASYSCORE_API_KEY", "urxiKaOhuH6keoQBwC74a2mi0nsgcAkJ1VBlkIK6"),
-    "User-Agent":      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-    "Accept-Language": "nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7",
-}
-
-CATEGORIES = {
-    "batting":  "off",
-    "pitching": "pit",
-    "fielding": "fld",
-}
-
-BATTING_HEADERS = [
-    {"column":"Player",  "label":"Player",  "tooltip":"",                             "format":False},
-    {"column":"Teamname","label":"Team",    "tooltip":"",                             "format":False},
-    {"column":"G",       "label":"G",       "tooltip":"Games played",                 "format":False},
-    {"column":"PA",      "label":"PA",      "tooltip":"Plate Appearances",            "format":False},
-    {"column":"AB",      "label":"AB",      "tooltip":"At Bats",                      "format":False},
-    {"column":"R",       "label":"R",       "tooltip":"Runs scored",                  "format":False},
-    {"column":"H",       "label":"H",       "tooltip":"Hits",                         "format":False},
-    {"column":"RBI",     "label":"RBI",     "tooltip":"Runs Batted In",               "format":False},
-    {"column":"HR",      "label":"HR",      "tooltip":"Home Runs",                    "format":False},
-    {"column":"2B",      "label":"2B",      "tooltip":"Doubles",                      "format":False},
-    {"column":"3B",      "label":"3B",      "tooltip":"Triples",                      "format":False},
-    {"column":"TB",      "label":"TB",      "tooltip":"Total Bases",                  "format":False},
-    {"column":"SB",      "label":"SB",      "tooltip":"Stolen Bases",                 "format":False},
-    {"column":"BB",      "label":"BB",      "tooltip":"Walks",                        "format":False},
-    {"column":"SO",      "label":"SO",      "tooltip":"Strikeouts",                   "format":False},
-    {"column":"HBP",     "label":"HBP",     "tooltip":"Hit by Pitch",                 "format":False},
-    {"column":"BA",      "label":"BA",      "tooltip":"Batting Average",              "format":False},
-    {"column":"OBP",     "label":"OBP",     "tooltip":"On Base Percentage",           "format":False},
-    {"column":"SLG",     "label":"SLG",     "tooltip":"Slugging Percentage",          "format":False},
-    {"column":"OPS",     "label":"OPS",     "tooltip":"On Base + Slugging",           "format":False},
-    {"column":"wOBA",    "label":"wOBA",    "tooltip":"Weighted On Base Average",     "format":False},
-    {"column":"BABIP",   "label":"BABIP",   "tooltip":"Batting Avg on Balls in Play", "format":False},
-    {"column":"ISO",     "label":"ISO",     "tooltip":"Isolated Power",               "format":False},
-    {"column":"BBPct",   "label":"BB%",     "tooltip":"Walk Percentage",              "format":False},
-    {"column":"SOPct",   "label":"SO%",     "tooltip":"Strikeout Percentage",         "format":False},
-    {"column":"RC",      "label":"RC",      "tooltip":"Runs Created",                 "format":False},
-    {"column":"RISP",    "label":"RISP",    "tooltip":"Runners in Scoring Position",  "format":False},
-    {"column":"SBPct",   "label":"SB%",     "tooltip":"Stolen Base Percentage",       "format":False},
-]
-
-PITCHING_HEADERS = [
-    {"column":"Player",   "label":"Player",  "tooltip":"",                              "format":False},
-    {"column":"Teamname", "label":"Team",    "tooltip":"",                              "format":False},
-    {"column":"G",        "label":"G",       "tooltip":"Games pitched",                 "format":False},
-    {"column":"GS",       "label":"GS",      "tooltip":"Games started",                 "format":False},
-    {"column":"W",        "label":"W",       "tooltip":"Wins",                          "format":False},
-    {"column":"L",        "label":"L",       "tooltip":"Losses",                        "format":False},
-    {"column":"SV",       "label":"SV",      "tooltip":"Saves",                         "format":False},
-    {"column":"IP",       "label":"IP",      "tooltip":"Innings Pitched",               "format":False},
-    {"column":"BF",       "label":"BF",      "tooltip":"Batters Faced",                 "format":False},
-    {"column":"HA",       "label":"H",       "tooltip":"Hits Allowed",                  "format":False},
-    {"column":"ER",       "label":"ER",      "tooltip":"Earned Runs",                   "format":False},
-    {"column":"BBA",      "label":"BB",      "tooltip":"Walks Allowed",                 "format":False},
-    {"column":"K",        "label":"K",       "tooltip":"Strikeouts",                    "format":False},
-    {"column":"HRA",      "label":"HR",      "tooltip":"Home Runs Allowed",             "format":False},
-    {"column":"HBPA",     "label":"HBP",     "tooltip":"Hit Batters",                   "format":False},
-    {"column":"ERA",      "label":"ERA",     "tooltip":"Earned Run Average",            "format":False},
-    {"column":"WHIP",     "label":"WHIP",    "tooltip":"Walks + Hits per Inning",       "format":False},
-    {"column":"FIP",      "label":"FIP",     "tooltip":"Fielding Independent Pitching", "format":False},
-    {"column":"K9",       "label":"K/9",     "tooltip":"Strikeouts per 9 innings",      "format":False},
-    {"column":"BBA9",     "label":"BB/9",    "tooltip":"Walks per 9 innings",           "format":False},
-    {"column":"HA9",      "label":"H/9",     "tooltip":"Hits per 9 innings",            "format":False},
-    {"column":"KPct",     "label":"K%",      "tooltip":"Strikeout Percentage",          "format":False},
-    {"column":"BBAPct",   "label":"BB%",     "tooltip":"Walk Percentage",               "format":False},
-    {"column":"KBB",      "label":"K/BB",    "tooltip":"Strikeout to Walk Ratio",       "format":False},
-    {"column":"OppAVG",   "label":"OppAVG",  "tooltip":"Opponent Batting Average",      "format":False},
-    {"column":"OppOPS",   "label":"OppOPS",  "tooltip":"Opponent OPS",                  "format":False},
-    {"column":"OppBABIP", "label":"OppBABIP","tooltip":"Opponent BABIP",                "format":False},
-    {"column":"QS",       "label":"QS",      "tooltip":"Quality Starts",                "format":False},
-    {"column":"WPct",     "label":"W%",      "tooltip":"Win Percentage",                "format":False},
-]
-
-FIELDING_HEADERS = [
-    {"column":"Player",        "label":"Player","tooltip":"",                              "format":False},
-    {"column":"Teamname",      "label":"Team",  "tooltip":"",                              "format":False},
-    {"column":"G",             "label":"G",     "tooltip":"Games played",                  "format":False},
-    {"column":"Chances",       "label":"TC",    "tooltip":"Total Chances",                 "format":False},
-    {"column":"Putout",        "label":"PO",    "tooltip":"Putouts",                       "format":False},
-    {"column":"Assist",        "label":"A",     "tooltip":"Assists",                       "format":False},
-    {"column":"Error",         "label":"E",     "tooltip":"Errors",                        "format":False},
-    {"column":"DP",            "label":"DP",    "tooltip":"Double Plays",                  "format":False},
-    {"column":"FPct",          "label":"FPCT",  "tooltip":"Fielding Percentage",           "format":False},
-    {"column":"RangeFactor",   "label":"RF",    "tooltip":"Range Factor",                  "format":False},
-    {"column":"InningsPlayed", "label":"IP",    "tooltip":"Innings Played in Field",       "format":False},
-    {"column":"GamesatC",      "label":"C",     "tooltip":"Games at Catcher",              "format":False},
-    {"column":"Gamesat1B",     "label":"1B",    "tooltip":"Games at First Base",           "format":False},
-    {"column":"Gamesat2B",     "label":"2B",    "tooltip":"Games at Second Base",          "format":False},
-    {"column":"Gamesat3B",     "label":"3B",    "tooltip":"Games at Third Base",           "format":False},
-    {"column":"GamesatSS",     "label":"SS",    "tooltip":"Games at Shortstop",            "format":False},
-    {"column":"GamesatOF",     "label":"OF",    "tooltip":"Games in Outfield",             "format":False},
-    {"column":"GamesatP",      "label":"P",     "tooltip":"Games at Pitcher",              "format":False},
-    {"column":"PB",            "label":"PB",    "tooltip":"Passed Balls",                  "format":False},
-    {"column":"SBAtt",         "label":"SBA",   "tooltip":"Stolen Base Attempts against",  "format":False},
-    {"column":"CSMade",        "label":"CS",    "tooltip":"Caught Stealing",               "format":False},
-    {"column":"CSPct",         "label":"CS%",   "tooltip":"Caught Stealing Percentage",    "format":False},
-]
-
-HEADERS_MAP = {
-    "batting":  BATTING_HEADERS,
-    "pitching": PITCHING_HEADERS,
-    "fielding": FIELDING_HEADERS,
-}
+try:
+    from playwright.async_api import async_playwright
+except ImportError:
+    print("❌  playwright not installed. Run: pip install playwright && playwright install chromium")
+    sys.exit(1)
 
 
-def fetch_stats(cat_val):
-    url = (
-        f"{API_BASE}?yr={YEAR}&leagueID={LEAGUE_ID}"
-        f"&round=0&cat={cat_val}&subcat=ind&sortdir=desc&sortcol=&filter=all&_=1"
-    )
-    for attempt in range(3):
-        try:
-            r = requests.get(url, headers=API_HEADERS, timeout=30)
-            if r.status_code == 200:
-                data = r.json()
-                rows = data if isinstance(data, list) else (data.get("data") or data.get("players") or [])
-                for row in rows:
-                    pid = row.get("PlayerID") or row.get("playerID")
-                    row["link"] = f"https://www.easyscore.com/players/{pid}" if pid else ""
-                return rows
-            print(f"    Fout: HTTP {r.status_code} — {r.text[:200]}")
-        except Exception as e:
-            print(f"    Poging {attempt + 1} mislukt: {e}")
-        time.sleep(2 ** attempt)
-    return []
+# ── Config ────────────────────────────────────────────────────────────────────
+
+STATS_URL = "https://www.easyscore.com/stats/?y={year}&l=10147&r=0&cat=off"
+CATEGORIES = ["off", "pit", "fld"]   # offense / pitching / fielding
+CATEGORY_NAMES = {"off": "batting", "pit": "pitching", "fld": "fielding"}
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def log(msg: str):
+    print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+
+
+async def scrape_category(page, year: int, cat: str) -> list[dict]:
+    """
+    Navigate to EasyScore stats for one category.
+    Intercepts XHR/fetch requests to capture the raw JSON payload,
+    then also falls back to DOM extraction if no JSON is captured.
+    """
+    url = f"https://www.easyscore.com/stats/?y={year}&l=10147&r=0&cat={cat}"
+    captured = []
+
+    # ── Intercept all API responses ──────────────────────────────────────────
+    async def handle_response(response):
+        rurl = response.url
+        # EasyScore fetches stats via their own API – catch anything JSON-shaped
+        if (
+            "easyscore.com" in rurl
+            and response.status == 200
+            and "json" in (response.headers.get("content-type", ""))
+        ):
+            try:
+                data = await response.json()
+                if isinstance(data, (list, dict)):
+                    captured.append({"url": rurl, "data": data})
+                    log(f"  📡 Captured JSON from: {rurl}")
+            except Exception:
+                pass
+
+    page.on("response", handle_response)
+
+    log(f"  🌐 Loading {url}")
+    await page.goto(url, wait_until="networkidle", timeout=60_000)
+
+    # Wait extra for lazy-loaded data
+    await page.wait_for_timeout(4_000)
+
+    # ── Try to trigger different sub-tabs if present ─────────────────────────
+    try:
+        # Some versions of the page have tab buttons; click each to load all data
+        buttons = await page.query_selector_all("button[data-cat], [role='tab'], .stats-tab")
+        if buttons:
+            for btn in buttons:
+                try:
+                    await btn.click()
+                    await page.wait_for_timeout(1_500)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    page.remove_listener("response", handle_response)
+
+    # ── If JSON was intercepted, return it ────────────────────────────────────
+    if captured:
+        # Merge all captured payloads
+        all_rows = []
+        for item in captured:
+            d = item["data"]
+            if isinstance(d, list):
+                all_rows.extend(d)
+            elif isinstance(d, dict):
+                # Unwrap common wrappers: {players: [...]} {data: [...]} {stats: [...]}
+                for key in ("players", "data", "stats", "rows", "results", "items"):
+                    if key in d and isinstance(d[key], list):
+                        all_rows.extend(d[key])
+                        break
+                else:
+                    all_rows.append(d)
+        return all_rows
+
+    # ── Fallback: parse HTML table ────────────────────────────────────────────
+    log(f"  ⚠️  No JSON captured for '{cat}', falling back to HTML table parsing")
+    return await extract_from_dom(page, cat)
+
+
+async def extract_from_dom(page, cat: str) -> list[dict]:
+    """Extract stats rows directly from the rendered HTML table."""
+    try:
+        # Wait for a table or stats container
+        await page.wait_for_selector(
+            "table, .stats-table, [class*='stat'], [class*='player']",
+            timeout=10_000,
+        )
+    except Exception:
+        log("  ❌  No stats table found in DOM")
+        return []
+
+    rows = await page.evaluate("""
+        () => {
+            const results = [];
+
+            // ── Try <table> first ─────────────────────────────────────────
+            const tables = document.querySelectorAll('table');
+            if (tables.length > 0) {
+                for (const table of tables) {
+                    const headers = [...table.querySelectorAll('thead th, thead td')]
+                        .map(th => th.innerText.trim());
+                    if (headers.length === 0) continue;
+
+                    for (const row of table.querySelectorAll('tbody tr')) {
+                        const cells = [...row.querySelectorAll('td')]
+                            .map(td => td.innerText.trim());
+                        if (cells.length === 0) continue;
+                        const obj = {};
+                        headers.forEach((h, i) => { obj[h || `col${i}`] = cells[i] ?? ''; });
+                        results.push(obj);
+                    }
+                }
+                if (results.length > 0) return results;
+            }
+
+            // ── Generic fallback: rows with multiple children ─────────────
+            const candidates = document.querySelectorAll(
+                '[class*="row"], [class*="player"], [class*="stat-row"]'
+            );
+            for (const el of candidates) {
+                const spans = [...el.querySelectorAll('span, td, div')]
+                    .map(s => s.innerText.trim())
+                    .filter(Boolean);
+                if (spans.length >= 3) results.push({ raw: spans.join(' | ') });
+            }
+            return results;
+        }
+    """)
+
+    log(f"  📋 Extracted {len(rows)} rows from DOM for '{cat}'")
+    return rows
+
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
+async def run(year: int, output_path: str):
+    log(f"🚀 Starting DBL {year} stats scraper")
+
+    all_stats = {}
+
+    async with async_playwright() as pw:
+        browser = await pw.chromium.launch(
+            headless=True,
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
+        context = await browser.new_context(
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/124.0.0.0 Safari/537.36"
+            ),
+            viewport={"width": 1280, "height": 900},
+            locale="de-DE",
+        )
+
+        page = await context.new_page()
+
+        for cat in CATEGORIES:
+            cat_name = CATEGORY_NAMES[cat]
+            log(f"\n📊 Scraping {cat_name} stats (cat={cat})")
+            try:
+                rows = await scrape_category(page, year, cat)
+                all_stats[cat_name] = rows
+                log(f"  ✅ {len(rows)} {cat_name} records collected")
+            except Exception as e:
+                log(f"  ❌ Error scraping {cat_name}: {e}")
+                all_stats[cat_name] = []
+
+        await browser.close()
+
+    # ── Write output ──────────────────────────────────────────────────────────
+    out = {
+        "meta": {
+            "source": f"https://www.baseball.de/saison/statistiken/{year}",
+            "data_provider": "https://www.easyscore.com",
+            "league_id": 10147,
+            "year": year,
+            "scraped_at": datetime.utcnow().isoformat() + "Z",
+        },
+        "stats": all_stats,
+    }
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    Path(output_path).write_text(json.dumps(out, indent=2, ensure_ascii=False))
+    log(f"\n✅ Done! Output saved to: {output_path}")
+
+    # Summary
+    total = sum(len(v) for v in all_stats.values())
+    log(f"📈 Total records: {total}")
+    for k, v in all_stats.items():
+        log(f"   {k}: {len(v)}")
+
+    return out
 
 
 def main():
-    print(f"\nDBL Scraper — {datetime.now(timezone.utc):%Y-%m-%d %H:%M UTC}\n")
+    parser = argparse.ArgumentParser(description="Scrape DBL baseball statistics")
+    parser.add_argument("--year", type=int, default=2026, help="Season year (default: 2026)")
+    parser.add_argument("--output", default="dbl_stats.json", help="Output JSON file path")
+    args = parser.parse_args()
 
-    all_stats = {}
-    for cat_key, cat_val in CATEGORIES.items():
-        print(f"  {cat_key} ({cat_val})…")
-        rows = fetch_stats(cat_val)
-        all_stats[cat_key] = {
-            "headers": HEADERS_MAP[cat_key],
-            "data":    rows,
-        }
-        print(f"    {len(rows)} rijen")
-        time.sleep(0.5)
-
-    with open(f"{DATA}/stats.json", "w", encoding="utf-8") as f:
-        json.dump(all_stats, f, ensure_ascii=False, indent=2)
-
-    total = sum(len(v["data"]) for v in all_stats.values())
-    print(f"\n✅ stats.json geschreven ({total} totaal rijen)\n")
+    asyncio.run(run(args.year, args.output))
 
 
 if __name__ == "__main__":
